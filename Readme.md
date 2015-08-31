@@ -9,5 +9,5 @@ Range is currently hard-coded as a constant at the start of the source.
 
 - Move range specification to command line argument(s)
 - Convert use of **fping** and **host** to native Go routines
-- Add support IPv6
+- Add support for IPv6
 - Modify text strings to facilitate internationalization
