@@ -16,20 +16,20 @@ import (
 )
 
 // Change constants to determine the range to be scanned.
-const startIp = "192.168.0.1"
-const endIp = "192.168.0.254"
+const startIP = "192.168.0.1"
+const endIP = "192.168.0.254"
 
-type Data struct {
+type resultData struct {
 	PingResult string
 	HostResult string
 }
 
 // Functions and types needed to support sorting the results
 
-func (d Data) Octets() []int {
+func (d resultData) addrOctets() []int {
 	parts := strings.SplitN(d.PingResult, " ", 2)
 	octetStrings := strings.SplitN(parts[0], ".", 4)
-	octets := make([]int, 0)
+	var octets []int
 	for _, octetString := range octetStrings {
 		octetInt, _ := strconv.Atoi(octetString)
 		octets = append(octets, octetInt)
@@ -37,13 +37,13 @@ func (d Data) Octets() []int {
 	return octets
 }
 
-type ByIP []Data
+type byIP []resultData
 
-func (device ByIP) Len() int      { return len(device) }
-func (device ByIP) Swap(i, j int) { device[i], device[j] = device[j], device[i] }
-func (device ByIP) Less(i, j int) bool {
-	Ioctets := device[i].Octets()
-	Joctets := device[j].Octets()
+func (device byIP) Len() int      { return len(device) }
+func (device byIP) Swap(i, j int) { device[i], device[j] = device[j], device[i] }
+func (device byIP) Less(i, j int) bool {
+	Ioctets := device[i].addrOctets()
+	Joctets := device[j].addrOctets()
 	for iter := 0; iter < 4; iter++ {
 		switch {
 		case Ioctets[iter] < Joctets[iter]:
@@ -62,17 +62,17 @@ func main() {
 	log.Println(": Program started")
 
 	// Configure an exec call to run fping in a subprocess and sent the output to a pipe
-	cmd := exec.Command("fping", "-gae", startIp, endIp+" 2>/dev/null")
+	cmd := exec.Command("fping", "-gae", startIP, endIP+" 2>/dev/null")
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatal("Error creating StdoutPipe for Cmd", err)
 	}
 
 	// Create a goroutine to read the output from the pipe
-	ips := make([]Data, 0)
+	var ips []resultData
 	scanner := bufio.NewScanner(cmdReader)
 	go func() {
-		var device Data
+		var device resultData
 		for scanner.Scan() {
 			device.PingResult = scanner.Text()
 			ips = append(ips, device)
@@ -113,7 +113,7 @@ func main() {
 	}
 
 	log.Println(": DNS complete")
-	sort.Sort(ByIP(ips))
+	sort.Sort(byIP(ips))
 	log.Println(": Sort complete")
 
 	for _, ip := range ips {
