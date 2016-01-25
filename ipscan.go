@@ -1,6 +1,5 @@
 // Scans defined IP range and returns list of active devices, rtt, and DNS names.
 // Started life based on mping (https://github.com/mhusmann/mping).
-// Currently dependent on the commands 'fping' and 'host' and a Bourne-ish shell environment.
 // Logging can be eliminated by redirecting stderr to /dev/null
 package main
 
@@ -39,6 +38,25 @@ func inc(ip net.IP) {
 			break
 		}
 	}
+}
+
+func roundDuration(d, r time.Duration) time.Duration {
+	if r <= 0 {
+		return d
+	}
+	neg := d < 0
+	if neg {
+		d = -d
+	}
+	if m := d % r; m+m < r {
+		d = d - m
+	} else {
+		d = d + r - m
+	}
+	if neg {
+		return -d
+	}
+	return d
 }
 
 // Functions and types needed to support sorting the results
@@ -96,7 +114,7 @@ func main() {
 	p.MaxRTT = maxRTT
 	p.OnRecv = func(addr *net.IPAddr, rtt time.Duration) {
 		var device resultData
-		device.PingResult = addr.String() + "\t" + rtt.String()
+		device.PingResult = addr.String() + "\t" + roundDuration(rtt, time.Millisecond).String()
 		ips = append(ips, device)
 	}
 

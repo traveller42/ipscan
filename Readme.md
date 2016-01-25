@@ -11,3 +11,5 @@ Range endpoints are currently hard-coded as constants near the top of the source
 - ~~Convert use of **fping** and **host** to native Go routines~~
 - Add support for IPv6
 - Modify text strings to facilitate internationalization
+- Improve performance
+- Improve robustness of scan
