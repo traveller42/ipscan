@@ -8,6 +8,6 @@ Range endpoints are currently hard-coded as constants near the top of the source
 ## To Do
 
 - Move range specification to command line argument(s)
-- Convert use of **fping** and **host** to native Go routines
+- ~~Convert use of **fping** and **host** to native Go routines~~
 - Add support for IPv6
 - Modify text strings to facilitate internationalization
