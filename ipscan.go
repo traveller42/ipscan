@@ -5,29 +5,46 @@
 package main
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
 	"log"
 	"net"
-	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
+
+	fastping "github.com/tatsushid/go-fastping"
 )
 
+// maxRTT is timeout for each ping
+const maxRTT = 5 * time.Second
+
 // Change constants to determine the range to be scanned.
-const startIP = "192.168.0.1"
-const endIP = "192.168.0.254"
+const startIPString = "192.168.0.1"
+const endIPString = "192.168.0.254"
 
 type resultData struct {
 	PingResult string
 	HostResult string
 }
 
+var ips []resultData
+
+// Utility functions
+func inc(ip net.IP) {
+	for j := len(ip) - 1; j >= 0; j-- {
+		ip[j]++
+		if ip[j] > 0 {
+			break
+		}
+	}
+}
+
 // Functions and types needed to support sorting the results
 
 func (d resultData) addrOctets() []int {
-	parts := strings.SplitN(d.PingResult, " ", 2)
+	parts := strings.SplitN(d.PingResult, "\t", 2)
 	octetStrings := strings.SplitN(parts[0], ".", 4)
 	var octets []int
 	for _, octetString := range octetStrings {
@@ -61,36 +78,42 @@ func (device byIP) Less(i, j int) bool {
 func main() {
 	log.Println(": Program started")
 
-	// Configure an exec call to run fping in a subprocess and sent the output to a pipe
-	cmd := exec.Command("fping", "-gae", startIP, endIP+" 2>/dev/null")
-	cmdReader, err := cmd.StdoutPipe()
-	if err != nil {
-		log.Fatal("Error creating StdoutPipe for Cmd", err)
+	startIP := net.ParseIP(startIPString)
+	if startIP == nil {
+		log.Fatal("startIPString,", startIPString, ", is not a valid IP address")
+	}
+	endIP := net.ParseIP(endIPString)
+	if endIP == nil {
+		log.Fatal("endIPString,", endIPString, ", is not a valid IP address")
 	}
 
-	// Create a goroutine to read the output from the pipe
-	var ips []resultData
-	scanner := bufio.NewScanner(cmdReader)
-	go func() {
+	netProto := "ip4:icmp"
+	if strings.Index(startIPString, ":") != -1 {
+		netProto = "ip6:ipv6-icmp"
+	}
+
+	p := fastping.NewPinger()
+	p.MaxRTT = maxRTT
+	p.OnRecv = func(addr *net.IPAddr, rtt time.Duration) {
 		var device resultData
-		for scanner.Scan() {
-			device.PingResult = scanner.Text()
-			ips = append(ips, device)
+		device.PingResult = addr.String() + "\t" + rtt.String()
+		ips = append(ips, device)
+	}
+
+	currentIP := net.IPv4(127, 0, 0, 1)
+	for copy(currentIP, startIP); bytes.Compare(currentIP, endIP) < 0; inc(currentIP) {
+		ra, err := net.ResolveIPAddr(netProto, currentIP.String())
+		if err != nil {
+			log.Fatal(err)
 		}
-	}()
+		p.AddIPAddr(ra)
+	}
 
-	// Start the subprocess prepared above
-	err = cmd.Start()
+	err := p.Run()
 	if err != nil {
-		log.Fatal("Error starting Cmd", err)
+		log.Fatal("Pinger returns error: ", err)
 	}
-	log.Println(": Scan started")
 
-	// Wait for the subprocess to exit
-	err = cmd.Wait()
-	if err != nil && err.Error() != "exit status 1" {
-		log.Fatal("Error waiting for Cmd", err)
-	}
 	log.Println(": Scan complete")
 
 	fmt.Println()
@@ -99,11 +122,10 @@ func main() {
 
 	// Query DNS for the name of each device found by the ping scan
 	var ipAndTime []string
-	var hosts []string
 	var hostname string
 	for index, ip := range ips {
-		ipAndTime = strings.SplitN(ip.PingResult, " ", 2)
-		hosts, err = net.LookupAddr(ipAndTime[0])
+		ipAndTime = strings.SplitN(ip.PingResult, "\t", 2)
+		hosts, err := net.LookupAddr(ipAndTime[0])
 		if err != nil {
 			hostname = "Error: " + err.Error()
 		} else {
@@ -117,7 +139,7 @@ func main() {
 	log.Println(": Sort complete")
 
 	for _, ip := range ips {
-		fmt.Printf("%-25s --> %s\n", ip.PingResult, ip.HostResult)
+		fmt.Printf("%-25s\t--> %s\n", ip.PingResult, ip.HostResult)
 	}
 
 	fmt.Println()
