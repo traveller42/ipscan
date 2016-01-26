@@ -94,6 +94,7 @@ func (device byIP) Less(i, j int) bool {
 }
 
 func main() {
+	useUDP := false
 	log.Println(": Program started")
 
 	startIP := net.ParseIP(startIPString)
@@ -125,6 +126,10 @@ func main() {
 			log.Fatal(err)
 		}
 		p.AddIPAddr(ra)
+	}
+
+	if useUDP {
+		p.Network("udp")
 	}
 
 	err := p.Run()
