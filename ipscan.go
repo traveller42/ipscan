@@ -123,7 +123,7 @@ func main() {
 	}
 
 	currentIP := net.IPv4(127, 0, 0, 1)
-	for copy(currentIP, startIP); bytes.Compare(currentIP, endIP) < 0; inc(currentIP) {
+	for copy(currentIP, startIP); bytes.Compare(currentIP, endIP) <= 0; inc(currentIP) {
 		ra, err := net.ResolveIPAddr(netProto, currentIP.String())
 		if err != nil {
 			log.Fatal(err)
