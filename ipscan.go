@@ -9,7 +9,6 @@ import (
 	"log"
 	"net"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -63,15 +62,13 @@ func roundDuration(d, r time.Duration) time.Duration {
 
 // Functions and types needed to support sorting the results
 
-func (d resultData) addrOctets() []int {
+func (d resultData) getIP() net.IP {
 	parts := strings.SplitN(d.PingResult, "\t", 2)
-	octetStrings := strings.SplitN(parts[0], ".", 4)
-	var octets []int
-	for _, octetString := range octetStrings {
-		octetInt, _ := strconv.Atoi(octetString)
-		octets = append(octets, octetInt)
+	dIP := net.ParseIP(parts[0])
+	if dIP == nil {
+		log.Fatal("parts[0],", parts[0], ", is not a valid IP address")
 	}
-	return octets
+	return dIP
 }
 
 type byIP []resultData
@@ -79,20 +76,9 @@ type byIP []resultData
 func (device byIP) Len() int      { return len(device) }
 func (device byIP) Swap(i, j int) { device[i], device[j] = device[j], device[i] }
 func (device byIP) Less(i, j int) bool {
-	Ioctets := device[i].addrOctets()
-	Joctets := device[j].addrOctets()
-	for iter := 0; iter < 4; iter++ {
-		switch {
-		case Ioctets[iter] < Joctets[iter]:
-			return true
-		case Ioctets[iter] > Joctets[iter]:
-			return false
-		}
-	}
-	// This function should have returned by now as there shoudn't be duplicate IPs
-	// This final return is correct for the case where duplicate IPs are compared
-	// i < j is false for the case i == j
-	return false
+	iIP := device[i].getIP()
+	jIP := device[j].getIP()
+	return bytes.Compare(iIP, jIP) < 0
 }
 
 func main() {
