@@ -122,7 +122,7 @@ func main() {
 		p.RemoveIPAddr(addr)
 	}
 
-	currentIP := net.IPv4(127, 0, 0, 1)
+	currentIP := make(net.IP, len(startIP))
 	for copy(currentIP, startIP); bytes.Compare(currentIP, endIP) <= 0; inc(currentIP) {
 		ra, err := net.ResolveIPAddr(netProto, currentIP.String())
 		if err != nil {
