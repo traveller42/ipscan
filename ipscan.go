@@ -17,7 +17,8 @@ import (
 )
 
 // maxRTT is timeout for each ping
-const maxRTT = 5 * time.Second
+const maxRTT = time.Second
+const numPing = 5
 
 // Change constants to determine the range to be scanned.
 const startIPString = "192.168.0.1"
@@ -29,6 +30,7 @@ type resultData struct {
 }
 
 var ips []resultData
+var baseRTT time.Duration
 
 // Utility functions
 func inc(ip net.IP) {
@@ -115,8 +117,9 @@ func main() {
 	p.MaxRTT = maxRTT
 	p.OnRecv = func(addr *net.IPAddr, rtt time.Duration) {
 		var device resultData
-		device.PingResult = addr.String() + "\t" + roundDuration(rtt, time.Millisecond).String()
+		device.PingResult = addr.String() + "\t" + roundDuration(baseRTT+rtt, time.Millisecond).String()
 		ips = append(ips, device)
+		p.RemoveIPAddr(addr)
 	}
 
 	currentIP := net.IPv4(127, 0, 0, 1)
@@ -132,9 +135,12 @@ func main() {
 		p.Network("udp")
 	}
 
-	err := p.Run()
-	if err != nil {
-		log.Fatal("Pinger returns error: ", err)
+	for index := 0; index < numPing; index++ {
+		baseRTT = time.Duration(index) * maxRTT
+		err := p.Run()
+		if err != nil {
+			log.Fatal("Pinger returns error: ", err)
+		}
 	}
 
 	log.Println(": Scan complete")
