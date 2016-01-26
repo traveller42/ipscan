@@ -10,6 +10,7 @@ import (
 	"net"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	fastping "github.com/tatsushid/go-fastping"
@@ -138,16 +139,22 @@ func main() {
 	// Query DNS for the name of each device found by the ping scan
 	var ipAndTime []string
 	var hostname string
+	var wg sync.WaitGroup
 	for index, ip := range ips {
 		ipAndTime = strings.SplitN(ip.PingResult, "\t", 2)
-		hosts, err := net.LookupAddr(ipAndTime[0])
-		if err != nil {
-			hostname = "Error: " + err.Error()
-		} else {
-			hostname = strings.Join(hosts, ", ")
-		}
-		ips[index].HostResult = hostname
+		wg.Add(1)
+		go func(ipString string, localIndex int) {
+			hosts, err := net.LookupAddr(ipString)
+			if err != nil {
+				hostname = "Error: " + err.Error()
+			} else {
+				hostname = strings.Join(hosts, ", ")
+			}
+			ips[localIndex].HostResult = hostname
+			wg.Done()
+		}(ipAndTime[0], index)
 	}
+	wg.Wait()
 
 	log.Println(": DNS complete")
 	sort.Sort(byIP(ips))

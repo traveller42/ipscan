@@ -9,7 +9,7 @@ Range endpoints are currently hard-coded as constants near the top of the source
 
 - Move range specification to command line argument(s)
 - ~~Convert use of **fping** and **host** to native Go routines~~
-- Add support for IPv6
+- ~~Add support for IPv6~~ (untested)
 - Modify text strings to facilitate internationalization
-- Improve performance
-- Improve robustness of scan
+- ~~Improve performance~~
+- ~~Improve robustness of scan~~
