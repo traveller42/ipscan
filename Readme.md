@@ -15,9 +15,9 @@ Usage: ipscan [-quv] [-n value] [-t value] startIP endIP
 
 ## To Do
 
-- ~~Move range specification to command line argument(s)~~
-- ~~Convert use of **fping** and **host** to native Go routines~~
-- ~~Add support for IPv6~~ (untested)
-- Modify text strings to facilitate internationalization
-- ~~Improve performance~~
-- ~~Improve robustness of scan~~
+- [x] Move range specification to command line argument(s)
+- [x] Convert use of **fping** and **host** to native Go routines
+- [x] Add support for IPv6 (untested)
+- [ ] Modify text strings to facilitate internationalization
+- [x] Improve performance
+- [x] Improve robustness of scan
