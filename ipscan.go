@@ -8,21 +8,19 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	getopt "github.com/pborman/getopt"
 	fastping "github.com/tatsushid/go-fastping"
 )
 
-// maxRTT is timeout for each ping
-const maxRTT = time.Second
-const numPing = 5
-
-// Change constants to determine the range to be scanned.
-const startIPString = "192.168.0.1"
-const endIPString = "192.168.0.254"
+// defaultMaxRTT is timeout for each ping
+const defaultMaxRTT = time.Second
+const defaultPingCount = 5
 
 type resultData struct {
 	PingResult string
@@ -83,16 +81,59 @@ func (device byIP) Less(i, j int) bool {
 }
 
 func main() {
-	useUDP := false
-	log.Println(": Program started")
+	// Uncomment the following lines if you need to time the options parsing
+	//log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
+	//log.Println(": Program started")
 
+	// Configure Command Line Options
+	var useUDP, quiet, debug bool
+	var maxRTT time.Duration
+	var numPing int
+	getopt.BoolVarLong(&useUDP, "udp", 'u', "use UDP instead of ICMP")
+	getopt.BoolVarLong(&quiet, "quiet", 'q', "only display host data")
+	getopt.BoolVarLong(&debug, "debug", 'v', "print additional messages")
+	maxRTT = defaultMaxRTT
+	getopt.DurationVarLong(&maxRTT, "rtt", 't', "max RTT for each ping")
+	numPing = defaultPingCount
+	getopt.IntVarLong(&numPing, "count", 'n', "max number of pings per target")
+	getopt.SetParameters("startIP endIP")
+	getopt.Parse()
+
+	// Verify arguments
+	if getopt.NArgs() != 2 {
+		log.Println("Incorrect number of arguments!")
+		getopt.PrintUsage(os.Stderr)
+		os.Exit(1)
+	}
+	startIPString := getopt.Arg(0)
+	endIPString := getopt.Arg(1)
+
+	// Test for incompatible options
+	if quiet && debug {
+		log.Println("`quiet` and `debug` are incompatible")
+		getopt.PrintUsage(os.Stderr)
+		os.Exit(1)
+	}
+
+	if debug {
+		log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
+		log.Println(": Command Line Parsing complete")
+	}
+
+	// Convert to IP object
 	startIP := net.ParseIP(startIPString)
 	if startIP == nil {
-		log.Fatal("startIPString,", startIPString, ", is not a valid IP address")
+		log.Fatal("Start IP,", startIPString, ", is not a valid IP address")
+	}
+	if debug {
+		log.Println(": Start IP\t", startIPString)
 	}
 	endIP := net.ParseIP(endIPString)
 	if endIP == nil {
-		log.Fatal("endIPString,", endIPString, ", is not a valid IP address")
+		log.Fatal("End IP,", endIPString, ", is not a valid IP address")
+	}
+	if debug {
+		log.Println(": End IP  \t", endIPString)
 	}
 
 	netProto := "ip4:icmp"
@@ -122,6 +163,10 @@ func main() {
 		p.Network("udp")
 	}
 
+	if debug {
+		log.Println(": Start Scan")
+	}
+
 	for index := 0; index < numPing; index++ {
 		baseRTT = time.Duration(index) * maxRTT
 		err := p.Run()
@@ -130,11 +175,19 @@ func main() {
 		}
 	}
 
-	log.Println(": Scan complete")
+	if debug {
+		log.Println(": Scan complete")
+	}
 
-	fmt.Println()
-	fmt.Printf("%d devices found\n", len(ips))
-	fmt.Println()
+	if !quiet {
+		fmt.Println()
+		fmt.Printf("%d devices found\n", len(ips))
+		fmt.Println()
+	}
+
+	if debug {
+		log.Println(": Start Host Lookup")
+	}
 
 	// Query DNS for the name of each device found by the ping scan
 	var ipAndTime []string
@@ -156,14 +209,25 @@ func main() {
 	}
 	wg.Wait()
 
-	log.Println(": DNS complete")
+	if debug {
+		log.Println(": DNS complete")
+	}
+
 	sort.Sort(byIP(ips))
-	log.Println(": Sort complete")
+
+	if debug {
+		log.Println(": Sort complete")
+	}
 
 	for _, ip := range ips {
 		fmt.Printf("%-25s\t--> %s\n", ip.PingResult, ip.HostResult)
 	}
 
-	fmt.Println()
-	log.Println(": Program complete")
+	if !quiet {
+		fmt.Println()
+	}
+
+	if debug {
+		log.Println(": Program complete")
+	}
 }
