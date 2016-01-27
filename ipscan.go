@@ -1,6 +1,13 @@
-// Scans defined IP range and returns list of active devices, rtt, and DNS names.
+// Scans specified IP range and returns list of active devices, rtt, and DNS names.
 // Started life based on mping (https://github.com/mhusmann/mping).
-// Logging can be eliminated by redirecting stderr to /dev/null
+//
+// Usage: ipscan [-quv] [-n value] [-t value] startIP endIP
+//  -n, --count=value  max number of pings per target
+//  -q, --quiet        only display host data
+//  -t, --rtt=value    max RTT for each ping
+//  -u, --udp          use UDP instead of ICMP
+//  -v, --debug        print additional messages
+//  startIP, endIP     endpoints of scan (inclusive)
 package main
 
 import (
